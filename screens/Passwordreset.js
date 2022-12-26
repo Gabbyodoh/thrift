@@ -31,12 +31,12 @@ export function Passwordreset () {
 
 const styles = StyleSheet.create({
     infoTitle:{
-        fontSize:Theme.fonts.fontSizePoint.h5 
+        fontSize:Theme.fonts.fontSizePoint.h5,
+        color:Theme.colors.blue900 
     },
     form:{
         marginTop:Theme.sizes[3],
         flex:1,
-        backgroundColor:'#89CFEF',
         borderBottomRightRadius:40,
         borderBottomLeftRadius:50
     },
