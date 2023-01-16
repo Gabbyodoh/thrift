@@ -1,7 +1,7 @@
 import { useState,useEffect,useCallback,useContext } from "react";
 import { AppContext } from "../utils/global";
 import { SafeArea } from "../utils/safearea";
-import { View,Text,StyleSheet,ScrollView, TouchableOpacity,ActivityIndicator } from "react-native";
+import { View,Text,StyleSheet,ScrollView, TouchableOpacity,ActivityIndicator, Alert } from "react-native";
 import { Theme } from '../utils/theme';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
@@ -14,20 +14,17 @@ import * as yup from 'yup';
 import { authentication } from "../firebase/firebase.settings";
 import { signInWithEmailAndPassword,onAuthStateChanged } from "firebase/auth";
 
-
 const formRules = yup.object({
-    
     email:yup.string('invalid characters')
     .email('must be an email')
-    .max(60,'not more than 60 characters')
+    .max(60,'not more than 32 characters')
     .required('This is a compulsory field'),
-  
-  password:yup.string('invalid characters')
-    .required('This is a compulsory field')
-   
-  })
 
-  export function Signin({navigation}) {
+    password:yup.string('invalid characters')
+    .required('This is a compulsory field')
+});
+
+export function Signin({navigation}) {
     const [appIsReady, setAppIsReady] = useState(false);
     const [loading,setLoading] = useState(false); //for ActivityIndicator
     const {setUid,setEmail} = useContext(AppContext);
@@ -59,8 +56,7 @@ const formRules = yup.object({
 
     return (
         <SafeArea>
-            
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView>
                 <Text style={styles.brand}>Thrift</Text>
                 <Text style={styles.intro}>Sign in to an existing account</Text>
 
@@ -73,7 +69,6 @@ const formRules = yup.object({
                     </TouchableOpacity>
                 </View>
 
-                    
                 <Formik
                     initialValues={{
                         email:'',
@@ -95,8 +90,23 @@ const formRules = yup.object({
                             });
                         })
                         .catch(error => {
-                            setLoading(false)
-                        }); //to here
+                            setLoading(false);
+                            let errorMsg;
+                            
+                            if(error == 'auth/user-not-found'){
+                                errorMsg = 'The email you entered was not found!';
+                            }else if(error == 'auth/wrong-password'){
+                                errorMsg = 'You have entered an incorrect password!';
+                            }else{
+                                errorMsg = 'We encountered a problem while logging you in';
+                            }
+
+                            Alert.alert(
+                                'Error',
+                                errorMsg,
+                                [{text:'Try again'}]
+                            )
+                        });
 
                         action.resetForm();//clear inputs
                     }}
@@ -144,20 +154,19 @@ const formRules = yup.object({
                                     }}>
                                         Sign In
                                     </Button>
+
+                                    <View style={styles.forgotPassword}>
+                                        <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                                        <TouchableOpacity
+                                        onPress={() => navigation.navigate('Password reset')}>
+                                            <Text style={styles.forgotPasswordAction}>Reset your password</Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             )
                         }}
                     </Formik>
-                    
-                        <View style={styles.infoTitle}>
-                        <Text>Forgot your email or password?</Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('Password reset')}>
-                            <Text style={styles.press}> Reset</Text>
-                            </TouchableOpacity>
-                        </View>
-                    
-                
-             </ScrollView>
+            </ScrollView>
         </SafeArea>
     )
 }
@@ -184,15 +193,22 @@ const styles = StyleSheet.create({
         marginBottom:Theme.sizes[3]
     },
     infoTitle:{
-        fontSize:Theme.fonts.fontSizePoint.h5,
-        flexDirection:'row',
-        marginTop:4
+        fontSize:Theme.fonts.fontSizePoint.h5
     },
     form:{
         marginTop:Theme.sizes[2]
     },
-    press:{
-        fontSize:Theme.fonts.fontSizePoint.button,
-        color:Theme.colors.blue900  
+    forgotPassword:{
+        marginTop:Theme.sizes[3],
+        flexDirection:'row'
+    },
+    forgotPasswordText:{
+        fontSize:Theme.fonts.fontSizePoint.body,
+        color:Theme.colors.gray500,
+        marginRight:Theme.sizes[2]
+    },
+    forgotPasswordAction:{
+        fontSize:Theme.fonts.fontSizePoint.body,
+        color:Theme.colors.blue700
     }
 })
