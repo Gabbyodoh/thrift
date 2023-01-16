@@ -13,6 +13,6 @@ const styles = StyleSheet.create({
     areaContainer:{
         flex:1,
         paddingHorizontal:8,
-        marginTop:Platform.OS === 'android' ? StatusBar.currentHeight +4  : 4,
+        marginTop:Platform.OS === 'android' ? StatusBar.currentHeight + 4 : 4,
     }
 })

@@ -1,204 +1,220 @@
-import { useState,useEffect,useCallback } from "react";
+import { useState,useEffect,useCallback,useContext } from "react";
+import { AppContext } from "../utils/global";
 import { SafeArea } from "../utils/safearea";
-import { View, Text,StyleSheet,ScrollView, TouchableOpacity } from "react-native";
-import { Button } from "react-native-paper";
-import { Theme } from "../utils/theme";
+import { View,Text,StyleSheet,ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Theme } from '../utils/theme';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { Righteous_400Regular } from "@expo-google-fonts/righteous";
-import { TextInput } from "react-native-paper";
+import { Button, TextInput } from "react-native-paper";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faCircleArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { Formik } from "formik";
 import * as yup from 'yup';
+import { authentication } from "../firebase/firebase.settings"; //this
+import { createUserWithEmailAndPassword,onAuthStateChanged } from "firebase/auth"; //this
 
 const formRules = yup.object({
-  lastName:yup.string('invalid characters')
-  .min(2,'must be at least 2 characters')
-  .max(32,'not more than 32 characters')
-  .required('This is a compulsory field'),
+    lastName:yup.string('invalid characters')
+    .min(2,'must be at least 2 characters')
+    .max(32,'not more than 32 characters')
+    .required('This is a compulsory field'),
 
-  firstName:yup.string('invalid characters')
-  .min(2,'must be at least 2 characters')
-  .max(32,'not more than 32 characters')
-  .required('This is a compulsory field'),
+    firstName:yup.string('invalid characters')
+    .min(2,'must be at least 2 characters')
+    .max(32,'not more than 32 characters')
+    .required('This is a compulsory field'),
 
-  phoneNumber:yup.string('invalid characters')
-  .min(11,'must be up to 11 numbers')
-  .max(17,'must not be more than 17 numbers')
-  .required('This is a compulsory field'),
+    phoneNumber:yup.string('invalid characters')
+    .min(11,'must be up to 11 numbers')
+    .max(17,'must not be more than 17 number')
+    .required('This is a compulsory field'),
 
-  email:yup.string('invalid characters')
-  .email('must be an email')
-  .max(60,'not more than 60 characters')
-  .required('This is a compulsory field'),
+    email:yup.string('invalid characters')
+    .email('must be an email')
+    .max(60,'not more than 32 characters')
+    .required('This is a compulsory field'),
 
-password:yup.string('invalid characters')
-  .min(11,'must be up to 11 numbers')
-  .required('This is a compulsory field')
-  .oneOf([yup.ref('passwordConfirmation'),null],'passwords must match'),
+    password:yup.string('invalid characters')
+    .min(6,'must be up to 6 numbers')
+    .required('This is a compulsory field')
+    .oneOf([yup.ref('passwordConfirmation'),null],'passwords must match')
 })
 
 export function Signup({navigation}) {
     const [appIsReady, setAppIsReady] = useState(false);
+    const [loading,setLoading] = useState(false); //for ActivityIndicator
+    const {setUid,setEmail,setUserNames} = useContext(AppContext);
 
-  useEffect(() => {
-    async function prepare() {
-      try {
-        await Font.loadAsync({Righteous_400Regular});
+    useEffect(() => {
+        async function prepare() {
+            try {
+                await Font.loadAsync({Righteous_400Regular});
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            } catch (e) {
+                console.warn(e);
+            } finally {
+                setAppIsReady(true);
+            }
+        }
 
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } catch (e) {
-        console.warn(e);
-      } finally {
-        setAppIsReady(true);
-      }
+        prepare();
+    }, []);
+
+    const onLayoutRootView = useCallback(async () => {
+        if (appIsReady) {
+        await SplashScreen.hideAsync();
+        }
+    }, [appIsReady]);
+
+    if (!appIsReady) {
+        return null;
     }
-
-    prepare();
-  }, []);
-
-  const onLayoutRootView = useCallback(async () => {
-    if (appIsReady) {
-      await SplashScreen.hideAsync();
-    }
-  }, [appIsReady]);
-
-  if (!appIsReady) {
-    return null;
-  }
 
     return (
         <SafeArea>
-            <ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.brand}>Thrift</Text>
-                <Text style={styles.intro}>Create an account to join 
+                <Text style={styles.intro}>Create an account to join
                 Thrift cooperative society and enjoy tons of benefits</Text>
 
                 <View style={styles.alreadyHaveAccount}>
-                    
-                    <Text style={styles.infoTitle}>Already have account</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('My Home')}>
+                    <Text style={styles.infoTitle}>Already have an account?</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('Sign in')}>
                         <FontAwesomeIcon icon={faCircleArrowRight}
                         color={Theme.colors.purple700}
                         size={Theme.sizes[5]}/>
                     </TouchableOpacity>
-                    
                 </View>
-
                 
                     <Formik
                     initialValues={{
-                      lastName:'',
-                      firstName:'',
-                      phoneNumber:'',
-                      email:'',
-                      password:'',
-                      passwordConfirmation:''
-                    }}
-
-                    onSubmit={(values,action) => {
-                      console.log(values.lastName);
-
-                      action.resetForm();//clear inputs
+                        lastName:'',
+                        firstName:'',
+                        phoneNumber:'',
+                        email:'',
+                        password:'',
+                        passwordConfirmation:''
                     }}
                     
+                    onSubmit={(values,action) => {
+                        //from here
+                        setLoading(true);
+                        createUserWithEmailAndPassword(authentication,values.email,values.password)
+                        .then(() => {
+                            //get the user UID
+                            onAuthStateChanged(authentication,user => {
+                                setEmail(values.email);
+                                setUid(user.uid);
+                                setUserNames({fname:values.firstName,lname:values.lastName});
+
+                                //redirect to home screen
+                                navigation.navigate('My Home');
+                            });
+                        })
+                        .catch(); //to here
+
+                        action.resetForm();//clear inputs
+                    }}
+
                     validationSchema={formRules}>
-                        {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => {
-                          return (
-                            <View style={styles.form}>
-                                <TextInput         
-                                placeholder="Last name"
-                                mode="outlined"
-                                outlineColor={Theme.colors.purple300}
-                                activeOutlineColor={Theme.colors.purple500}
-                                style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
-                                onChangeText={handleChange('lastName')}
-                                onBlur={handleBlur('lastName')}
-                                value={values.lastName}/>
-                                <Text sytle={{display:touched.lastName && errors.lastName ? 'flex' : 'none', color:'red'}}>
-                                  {touched.lastName && errors.lastName}
-                                </Text>
+                        {({ handleChange, handleBlur, handleSubmit, values, errors,touched }) => {
+                            return (
+                                <View style={styles.form}>
+                                    {loading ? <ActivityIndicator size='large' color={Theme.colors.purple900}/> : null}
 
+                                    <TextInput 
+                                    placeholder="Last name"
+                                    mode="outlined"
+                                    outlineColor={Theme.colors.purple300}
+                                    activeOutlineColor={Theme.colors.purple500}
+                                    style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
+                                    onChangeText={handleChange('lastName')}
+                                    onBlur={handleBlur('lastName')}
+                                    value={values.lastName}/>
+                                    <Text style={{display:touched.lastName && errors.lastName ? 'flex' : 'none', color:'red'}}>
+                                        {touched.lastName && errors.lastName}
+                                    </Text>
+                                    
+                                    <TextInput 
+                                    placeholder="First name"
+                                    mode="outlined"
+                                    outlineColor={Theme.colors.purple300}
+                                    activeOutlineColor={Theme.colors.purple500}
+                                    style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
+                                    onChangeText={handleChange('firstName')}
+                                    onBlur={handleBlur('firstName')}
+                                    value={values.firstName}/>
+                                    <Text style={{display:touched.firstName && errors.firstName ? 'flex' : 'none', color:'red'}}>
+                                        {touched.firstName && errors.firstName}
+                                    </Text>
+                                    
+                                    <TextInput 
+                                    placeholder="Phone number"
+                                    mode="outlined"
+                                    outlineColor={Theme.colors.purple300}
+                                    activeOutlineColor={Theme.colors.purple500}
+                                    style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
+                                    keyboardType='phone-pad'
+                                    onChangeText={handleChange('phoneNumber')}
+                                    onBlur={handleBlur('phoneNumber')}
+                                    value={values.phoneNumber}/>
+                                    <Text style={{display:touched.phoneNumber && errors.phoneNumber ? 'flex' : 'none', color:'red'}}>
+                                        {touched.phoneNumber && errors.phoneNumber}
+                                    </Text>
+                                    
+                                    <TextInput 
+                                    placeholder="email address"
+                                    mode="outlined"
+                                    outlineColor={Theme.colors.purple300}
+                                    activeOutlineColor={Theme.colors.purple500}
+                                    style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
+                                    keyboardType='email-address'
+                                    onChangeText={handleChange('email')}
+                                    onBlur={handleBlur('email')}
+                                    value={values.email}/>
+                                    <Text style={{display:touched.email && errors.email ? 'flex' : 'none', color:'red'}}>
+                                        {touched.email && errors.email}
+                                    </Text>
+                                
+                                    <TextInput 
+                                    placeholder="create password"
+                                    mode="outlined"
+                                    outlineColor={Theme.colors.purple300}
+                                    activeOutlineColor={Theme.colors.purple500}
+                                    style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
+                                    secureTextEntry={true}
+                                    onChangeText={handleChange('password')}
+                                    onBlur={handleBlur('password')}
+                                    value={values.password}/>
+                                    <Text style={{display:touched.password && errors.password ? 'flex' : 'none', color:'red'}}>
+                                        {touched.password && errors.password}
+                                    </Text>
 
-                                <TextInput
-                                placeholder="First name"
-                                mode="outlined"
-                                outlineColor={Theme.colors.purple300}
-                                activeOutlineColor={Theme.colors.purple500}
-                                style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
-                                onChangeText={handleChange('firstName')}
-                                onBlur={handleBlur('firstName')}
-                                value={values.firstName}/>
-                                <Text sytle={{display:touched.firstName && errors.firstName ? 'flex' : 'none', color:'red'}}>
-                                  {touched.firstName && errors.firstName}
-                                </Text>
+                                    <TextInput 
+                                    placeholder="confirm password"
+                                    mode="outlined"
+                                    outlineColor={Theme.colors.purple300}
+                                    activeOutlineColor={Theme.colors.purple500}
+                                    style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[3]}}
+                                    secureTextEntry={true}
+                                    onChangeText={handleChange('passwordConfirmation')}
+                                    onBlur={handleBlur('passwordConfirmation')}
+                                    value={values.passwordConfirmation}/>
 
-                                <TextInput
-                                placeholder="Phone number"
-                                mode="outlined"
-                                outlineColor={Theme.colors.purple300}
-                                activeOutlineColor={Theme.colors.purple500}
-                                style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
-                                keyboardType='phone-pad'
-                                onChangeText={handleChange('phoneNumber')}
-                                onBlur={handleBlur('phoneNumber')}
-                                value={values.phoneNumber}/>
-                                <Text sytle={{display:touched.phoneNumber && errors.phoneNumber ? 'flex' : 'none', color:'red'}}>
-                                  {touched.phoneNumber && errors.phoneNumber}
-                                </Text>
-
-                                <TextInput
-                                placeholder="email address"
-                                mode="outlined"
-                                outlineColor={Theme.colors.purple300}
-                                activeOutlineColor={Theme.colors.purple500}
-                                style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
-                                keyboardType='email-address'
-                                onChangeText={handleChange('email')}
-                                onBlur={handleBlur('email')}
-                                value={values.email}/>
-                                <Text sytle={{display:touched.email && errors.email ? 'flex' : 'none', color:'red'}}>
-                                  {touched.email && errors.email}
-                                </Text>
-
-                                <TextInput
-                                placeholder="create password"
-                                mode="outlined"
-                                outlineColor={Theme.colors.purple300}
-                                activeOutlineColor={Theme.colors.purple500}
-                                style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
-                                secureTextEntry={true}
-                                onChangeText={handleChange('password')}
-                                onBlur={handleBlur('password')}
-                                value={values.password}/>
-                                <Text sytle={{display:touched.password && errors.password ? 'flex' : 'none', color:'red'}}>
-                                  {touched.password && errors.password}
-                                </Text>
-
-                                <TextInput
-                                placeholder="confirm password"
-                                mode="outlined"
-                                outlineColor={Theme.colors.purple300}
-                                activeOutlineColor={Theme.colors.purple500}
-                                style={{fontSize:24,color:'#3C4048',marginBottom:Theme.sizes[1]}}
-                                secureTextEntry={true}
-                                onChangeText={handleChange('passwordConfirmation')}
-                                onBlur={handleBlur('passwordConfirmation')}
-                                value={values.passwordConfirmation}/>
-
-                                <Button
-                                mode="contained"
-                                color={Theme.colors.purple700}
-                                contentStyle={{paddingVertical:Theme.sizes[3]}}
-                                onPress={handleSubmit}>Create Acccount</Button>
-                          </View>
-                          )
+                                    <Button
+                                    mode="contained"
+                                    color={Theme.colors.purple700}
+                                    contentStyle={{paddingVertical:Theme.sizes[3]}}
+                                    onPress={() => {
+                                        handleSubmit();
+                                    }}>
+                                        Create Acccount 
+                                    </Button>
+                                </View>
+                            )
                         }}
-              
                     </Formik>
-                
-                
             </ScrollView>
         </SafeArea>
     )
@@ -229,6 +245,7 @@ const styles = StyleSheet.create({
         fontSize:Theme.fonts.fontSizePoint.h5
     },
     form:{
-        marginTop:Theme.sizes[2]
+        marginTop:Theme.sizes[2],
+        marginBottom:Theme.sizes[3]
     }
 })

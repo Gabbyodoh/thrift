@@ -3,7 +3,7 @@ import { Button } from 'react-native-paper';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faSackDollar,faWallet,faUsers,faPhoneVolume } from '@fortawesome/free-solid-svg-icons';
 
-export function Intro () {
+export function Intro ({navigation}) {
     function Tip ({tipName,tipIcon}){
         return (
             <TouchableOpacity style={styles.tip}>
@@ -26,7 +26,8 @@ export function Intro () {
             contentStyle={{paddingVertical:20}}
             color='#810CA8'
             icon='arrow-right'
-            style={{marginBottom:10}}>GET STARTED</Button>
+            style={{marginBottom:10}}
+            onPress={() => navigation.navigate('Sign up')}>GET STARTED</Button>
 
             <Button 
             mode='contained' 
