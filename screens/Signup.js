@@ -36,7 +36,7 @@ const formRules = yup.object({
     .required('This is a compulsory field'),
 
     password:yup.string('invalid characters')
-    .min(6,'must be up to 6 numbers')
+    .min(8,'must be up to 8 numbers')
     .required('This is a compulsory field')
     .oneOf([yup.ref('passwordConfirmation'),null],'passwords must match')
 })
